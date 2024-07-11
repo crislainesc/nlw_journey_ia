@@ -13,6 +13,10 @@ from langchain_core.prompts import PromptTemplate
 
 from langchain_core.runnables import RunnableSequence
 
+import json
+
+OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
+
 llm = ChatOpenAI(model="gpt-3.5-turbo")
 
 
@@ -31,18 +35,18 @@ def researchAgent(query, llm):
     return webContext['output']
 
 
-query = """
-Vou viajar para Londres em agosto de 2024.
-Quero que faça para um roteiro de viagem para mim com eventos que irão ocorrer na data da viagem e com o preço de passagem de São Paulo para Londres.
-"""
+# query = """
+# Vou viajar para Londres em agosto de 2024.
+# Quero que faça para um roteiro de viagem para mim com eventos que irão ocorrer na data da viagem e com o preço de passagem de São Paulo para Londres.
+# """
 
-print("***********")
-print(researchAgent(query, llm))
+# print("***********")
+# print(researchAgent(query, llm))
 
 
 def loadData():
     loader = WebBaseLoader(
-        web_paths= ("https://www.dicasdeviagem.com/inglaterra/",),
+        web_paths=("https://www.dicasdeviagem.com/inglaterra/",),
         bs_kwargs=dict(
             parse_only=bs4.SoupStrainer(
                 class_=(
@@ -76,7 +80,7 @@ def getRelevantDocs(query):
 
 def supervisorAgent(query, llm, webContext, relevant_documents):
     prompt_template = """
-  Você é um gerente de uma agência de viagens. Sua resposta final deverá ser um roteiro de viagem completo e detalhado. 
+  Você é um gerente de uma agência de viagens. Sua resposta final deverá ser um roteiro de viagem completo e detalhado.
   Utilize o contexto de eventos e preços de passagens, o input do usuário e também os documentos relevantes para elaborar o roteiro.
   Contexto: {webContext}
   Documento relevante: {relevant_documents}
@@ -107,5 +111,21 @@ def getResponse(query, llm):
     return response
 
 
-print(getResponse(query, llm).content)
-print("***********")
+# print(getResponse(query, llm).content)
+# print("***********")
+
+def lambda_handler(event, context):
+    # query = event.get("question")
+    body = json.loads(event.get("body", {}))
+    query = body.get('question', 'Parametro question não fornecido')
+    response = getResponse(query, llm).content
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json"
+        },
+        "body": json.dumps({
+            "message": "Tarefa concluída com sucesso",
+            "details": response
+        })
+    }
